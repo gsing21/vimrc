@@ -26,6 +26,8 @@ vim.o.shiftwidth = 4
 vim.o.tabstop = 4
 vim.o.softtabstop = 4
 
+vim.o.termguicolors = false
+
 vim.keymap.set('n', '<leader>v', vim.cmd.vsplit)
 vim.keymap.set('n', '<leader>h', vim.cmd.split)
 
@@ -80,14 +82,13 @@ do
 	vim.pack.add{ 
 		gh 'nvim-mini/mini.statusline',
 		gh "sphamba/smear-cursor.nvim",
-		gh "alsi-lawr/neotheme.nvim" 
+		{ src = gh "rose-pine/neovim", name = "rose-pine" }
 	}
 
 	require("mini.statusline").setup()
-	require("neotheme").setup {
-		theme = "bathyal-midwater"
-	}
-	vim.cmd.colorscheme("neotheme")
+
+	require("rose-pine").setup()
+	vim.cmd("colorscheme rose-pine-main")
 	require('smear_cursor').setup({})
 end
 
@@ -379,5 +380,36 @@ vim.keymap.set("n", "<C-S-N>", function() harpoon:list():next() end)
 
 -- ========================================
 -- Section 11: File explorer
--- TBD 
+-- Oil
 -- =======================================
+vim.pack.add({
+    gh 'stevearc/oil.nvim',
+	gh 'nvim-tree/nvim-web-devicons'
+})
+
+require("oil").setup()
+local detail = false
+require("oil").setup({
+	float = {
+		max_height = 0.8,
+		max_width = 0.9,
+		border = "rounded"
+	},
+	keymaps = {
+		["<leader>."] = {
+			desc = "Toggle file detail view",
+			callback = function()
+				detail = not detail
+				if detail then
+					require("oil").set_columns({ "icon", "permissions", "size", "mtime" })
+				else
+					require("oil").set_columns({ "icon" })
+				end
+			end,
+		},
+	},
+})
+
+vim.keymap.set('n', '<leader>-', require("oil").open_float)
+vim.keymap.set('n', '-', vim.cmd.Oil)
+
