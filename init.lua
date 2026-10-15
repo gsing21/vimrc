@@ -6,31 +6,80 @@ vim.g.mapleader = " "
 
 local function gh(repo) return "https://github.com/" .. repo end
 
-vim.o.nu = true
-vim.o.relativenumber = true
+vim.opt.nu = true
+vim.opt.relativenumber = true
 
-vim.o.undofile = true
-vim.o.undodir = os.getenv("HOME") .. "/.vim/undodir"
-vim.o.confirm = false
-vim.o.smartindent = true
-vim.o.wrap = false
+vim.opt.undofile = true
+vim.opt.undodir = os.getenv("HOME") .. "/.vim/undodir"
+vim.opt.confirm = false
+vim.opt.smartindent = true
+vim.opt.wrap = false
 
-vim.o.backup = false
-vim.o.swapfile = false
-vim.o.colorcolumn = "80"
-vim.o.guicursor = ""
-vim.o.signcolumn = "yes"
-vim.o.showtabline = 0
+vim.opt.backup = false
+vim.opt.swapfile = false
+vim.opt.colorcolumn = "80"
+vim.opt.guicursor = ""
+vim.opt.signcolumn = "yes"
+vim.opt.showtabline = 0
+vim.opt.expandtab = true
 
-vim.o.shiftwidth = 4
-vim.o.tabstop = 4
-vim.o.softtabstop = 4
+vim.opt.shiftwidth = 4
+vim.opt.tabstop = 4
+vim.opt.softtabstop = 4
 
-vim.o.termguicolors = false
+vim.opt.termguicolors = true
 
 vim.keymap.set('n', '<leader>v', vim.cmd.vsplit)
 vim.keymap.set('n', '<leader>h', vim.cmd.split)
 
+vim.keymap.set("v", "J", ":m '>+1<CR>gv=gv")
+vim.keymap.set("v", "K", ":m '<-2<CR>gv=gv")
+
+vim.keymap.set("n", "J", "mzJ`z")
+vim.keymap.set("n", "<C-d>", "<C-d>zz")
+vim.keymap.set("n", "<C-u>", "<C-u>zz")
+vim.keymap.set("n", "n", "nzzzv")
+vim.keymap.set("n", "N", "Nzzzv")
+
+vim.keymap.set("x", "<leader>p", [["_dP]])
+
+vim.keymap.set({ "n", "v" }, "<leader>y", [["+y]])
+vim.keymap.set("n", "<leader>Y", [["+Y]])
+
+vim.keymap.set({ "n", "v" }, "<leader>d", "\"_d")
+
+vim.keymap.set("i", "<C-c>", "<Esc>")
+
+vim.keymap.set("n", "<C-k>", "<cmd>cnext<CR>zz")
+vim.keymap.set("n", "<C-j>", "<cmd>cprev<CR>zz")
+vim.keymap.set("n", "<leader>k", "<cmd>lnext<CR>zz")
+vim.keymap.set("n", "<leader>j", "<cmd>lprev<CR>zz")
+
+
+
+vim.diagnostic.config {
+    update_in_insert = false,
+    severity_sort = true,
+    float = { border = 'rounded', source = 'if_many' },
+    underline = { severity = { min = vim.diagnostic.severity.WARN } },
+
+    -- Can switch between these as you prefer
+    virtual_text = true, -- Text shows up at the end of the line
+    virtual_lines = false, -- Text shows up underneath the line, with virtual lines
+
+    -- Auto open the float, so you can easily read the errors when jumping with `[d` and `]d`
+    jump = {
+        on_jump = function(_, bufnr)
+            vim.diagnostic.open_float {
+                bufnr = bufnr,
+                scope = 'cursor',
+                focus = false,
+            }
+        end,
+    },
+}
+
+vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
 do
 
   local function run_build(name, cmd, cwd)
@@ -75,11 +124,11 @@ end
 
 -- ========================================
 -- Section 2: Aesthetics
--- Colorschemes, Noice, Statusline, SmearCursor
+-- Colorschemes, Noice, Statusline, SmearCursor, Treesitter
 -- =======================================
 do
 	-- Retrieves all the necessary plugins from the correct sources and then we set them all up
-	vim.pack.add{ 
+	vim.pack.add{
 		gh 'nvim-mini/mini.statusline',
 		gh "sphamba/smear-cursor.nvim",
 		{ src = gh "rose-pine/neovim", name = "rose-pine" }
@@ -87,9 +136,92 @@ do
 
 	require("mini.statusline").setup()
 
-	require("rose-pine").setup()
-	vim.cmd("colorscheme rose-pine-main")
-	require('smear_cursor').setup({})
+	-- require("rose-pine").setup({
+	-- 	styles = {
+	-- 		italic = false
+	-- 	}
+	-- })
+  vim.pack.add({
+    "https://github.com/oskarnurm/koda.nvim",
+  })
+  -- require("koda").setup({ transparent = true })
+  vim.cmd("colorscheme koda")
+
+
+    
+	-- vim.cmd("colorscheme rose-pine-main")
+    require("smear_cursor").setup({
+        -- enabled = false,
+        cursor_color = "#ffffff",
+
+        never_draw_over_target = true,
+
+        smear_insert_mode = false,
+        min_vertical_distance_smear = 2,
+        min_horizontal_distance_smear = 2,
+
+        time_interval = 17, -- ms
+        stiffness = 0.9,
+        trailing_stiffness = 0.4,
+        damping = 0.99, -- stops bouncing
+
+        -- anticipation = 0.2,
+        -- distance_stop_animating = 0.6,
+    })
+	vim.pack.add { { src = gh 'nvim-treesitter/nvim-treesitter', version = 'main' } }
+
+	-- Ensure basic parsers are installed
+	local parsers = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc', 'latex' }
+	require('nvim-treesitter').install(parsers)
+
+	---@param buf integer
+	---@param language string
+	local function treesitter_try_attach(buf, language)
+		-- Check if the buffer is valid (might not be after install completes)
+		if not vim.api.nvim_buf_is_valid(buf) then return end
+
+		-- Check if a parser exists and load it
+		if not vim.treesitter.language.add(language) then return end
+
+		-- Enable syntax highlighting and other treesitter features
+		vim.treesitter.start(buf, language)
+
+		-- Enable treesitter based folds
+		-- For more info on folds see `:help folds`
+		-- vim.wo.foldexpr = 'v:lua.vim.treesitter.foldexpr()'
+		-- vim.wo.foldmethod = 'expr'
+
+		-- Check if treesitter indentation is available for this language, and if so enable it
+		-- in case there is no indent query, the indentexpr will fallback to the vim's built in one
+		local has_indent_query = vim.treesitter.query.get(language, 'indents') ~= nil
+
+		-- Enable treesitter based indentation
+		if has_indent_query then vim.bo.indentexpr = "v:lua.require'nvim-treesitter'.indentexpr()" end
+	end
+
+	local available_parsers = require('nvim-treesitter').get_available()
+	vim.api.nvim_create_autocmd('FileType', {
+		callback = function(args)
+      if args.match == "tex" then return end
+			local buf, filetype = args.buf, args.match
+
+			local language = vim.treesitter.language.get_lang(filetype)
+			if not language then return end
+
+			local installed_parsers = require('nvim-treesitter').get_installed 'parsers'
+
+			if vim.tbl_contains(installed_parsers, language) then
+				-- Enable the parser if it is already installed
+				treesitter_try_attach(buf, language)
+			elseif vim.tbl_contains(available_parsers, language) then
+				-- If a parser is available in `nvim-treesitter`, auto-install it and enable it after the installation is done
+				require('nvim-treesitter').install(language):await(function() treesitter_try_attach(buf, language) end)
+			else
+				-- Try to enable treesitter features in case the parser exists but is not available from `nvim-treesitter`
+				treesitter_try_attach(buf, language)
+			end
+		end,
+	})
 end
 
 -- ========================================
@@ -161,9 +293,8 @@ do
 	})
 
 	vim.keymap.set('n', '<leader>/', function()
-		builtin.current_buffer_fuzzy_finder(require("telescope.themes").get_dropdown() {
+		builtin.current_buffer_fuzzy_find(require("telescope.themes").get_dropdown {
 			previewer = false,
-			winblend = 10
 		})
 	end)
 
@@ -185,7 +316,7 @@ end
 -- Mason, Blink, Fidget 
 -- =======================================
 do
-	vim.pack.add { 
+	vim.pack.add {
 		gh 'j-hui/fidget.nvim',
 		gh 'mason-org/mason-lspconfig.nvim',
 		gh 'mason-org/mason.nvim',
@@ -280,7 +411,7 @@ end
 	local ensure_installed = vim.tbl_keys(servers or {})
 	vim.list_extend(ensure_installed, {})
 
-	require('fidget').setup()
+	require('fidget').setup({})
 
 	require('mason').setup()
 
@@ -333,7 +464,7 @@ end)
 -- Section 6: Marks
 -- Harpoon, Other Handling TBD
 -- =======================================
-vim.pack.add { 
+vim.pack.add {
 	{ src = gh 'ThePrimeagen/harpoon', version = 'harpoon2' }
 }
 
@@ -358,7 +489,19 @@ vim.keymap.set("n", "<C-S-N>", function() harpoon:list():next() end)
 -- Section 7: Journaling and Notes
 --  TBD
 -- =======================================
+vim.pack.add({
+    "https://github.com/OXY2DEV/markview.nvim",
+})
 
+
+require("markview").setup{
+  latex = {
+    enable = false
+  }
+}
+
+vim.keymap.set('n', '<leader>mt', ':Markview toggle<CR>')
+vim.keymap.set('n', '<leader>ms', ':Markview splitToggle<CR>')
 
 -- ========================================
 -- Section 8: Debugging
@@ -412,4 +555,59 @@ require("oil").setup({
 
 vim.keymap.set('n', '<leader>-', require("oil").open_float)
 vim.keymap.set('n', '-', vim.cmd.Oil)
+
+-- ========================================
+-- Section 11: Git and File Tracking
+-- gitsigns, Fugitive, undofile
+-- =======================================
+vim.pack.add { gh 'lewis6991/gitsigns.nvim' }
+local gitsigns = require 'gitsigns'
+gitsigns.setup {
+    signs = {
+        add = { text = '+' }, ---@diagnostic disable-line: missing-fields
+        change = { text = '~' }, ---@diagnostic disable-line: missing-fields
+        delete = { text = '_' }, ---@diagnostic disable-line: missing-fields
+        topdelete = { text = '‾' }, ---@diagnostic disable-line: missing-fields
+        changedelete = { text = '~' }, ---@diagnostic disable-line: missing-fields
+    },
+    on_attach = function(bufnr)
+        -- Navigation
+        vim.keymap.set('n', ']c', function()
+            if vim.wo.diff then
+                vim.cmd.normal { ']c', bang = true }
+            else
+                gitsigns.nav_hunk 'next'
+            end
+        end, { desc = 'Jump to next git [c]hange', buf = bufnr })
+
+        vim.keymap.set('n', '[c', function()
+            if vim.wo.diff then
+                vim.cmd.normal { '[c', bang = true }
+            else
+                gitsigns.nav_hunk 'prev'
+            end
+        end, { desc = 'Jump to previous git [c]hange', buf = bufnr })
+
+        -- Visual mode actions
+        vim.keymap.set('v', '<leader>hs', function() gitsigns.stage_hunk { vim.fn.line '.', vim.fn.line 'v' } end, { desc = 'git [s]tage hunk', buf = bufnr })
+        vim.keymap.set('v', '<leader>hr', function() gitsigns.reset_hunk { vim.fn.line '.', vim.fn.line 'v' } end, { desc = 'git [r]eset hunk', buf = bufnr })
+        -- Normal mode actions
+        vim.keymap.set('n', '<leader>hs', gitsigns.stage_hunk, { desc = 'git [s]tage hunk', buf = bufnr })
+        vim.keymap.set('n', '<leader>hr', gitsigns.reset_hunk, { desc = 'git [r]eset hunk', buf = bufnr })
+        vim.keymap.set('n', '<leader>hS', gitsigns.stage_buffer, { desc = 'git [S]tage buffer', buf = bufnr })
+        vim.keymap.set('n', '<leader>hR', gitsigns.reset_buffer, { desc = 'git [R]eset buffer', buf = bufnr })
+        vim.keymap.set('n', '<leader>hp', gitsigns.preview_hunk, { desc = 'git [p]review hunk', buf = bufnr })
+        vim.keymap.set('n', '<leader>hi', gitsigns.preview_hunk_inline, { desc = 'git preview hunk [i]nline', buf = bufnr })
+        vim.keymap.set('n', '<leader>hb', function() gitsigns.blame_line { full = true } end, { desc = 'git [b]lame line', buf = bufnr })
+        vim.keymap.set('n', '<leader>hd', gitsigns.diffthis, { desc = 'git [d]iff against index', buf = bufnr })
+        vim.keymap.set('n', '<leader>hD', function() gitsigns.diffthis '~' end, { desc = 'git [D]iff against last commit', buf = bufnr })
+        vim.keymap.set('n', '<leader>hQ', function() gitsigns.setqflist 'all' end, { desc = 'git hunk [Q]uickfix list (all files in repo)', buf = bufnr })
+        vim.keymap.set('n', '<leader>hq', gitsigns.setqflist, { desc = 'git hunk [q]uickfix list (all changes in this file)', buf = bufnr })
+        -- Toggles
+        vim.keymap.set('n', '<leader>tb', gitsigns.toggle_current_line_blame, { desc = '[T]oggle git show [b]lame line', buf = bufnr })
+        vim.keymap.set('n', '<leader>tw', gitsigns.toggle_word_diff, { desc = '[T]oggle git intra-line [w]ord diff', buf = bufnr })
+        -- Text object
+        vim.keymap.set({ 'o', 'x' }, 'ih', gitsigns.select_hunk, { desc = 'text object [i]nside [h]unk', buf = bufnr })
+    end,
+}
 
